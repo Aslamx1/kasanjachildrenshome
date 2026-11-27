@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { getRuntimeValue } = require('../config/runtime-env');
 
 // Verify JWT Token
 const verifyToken = (req, res, next) => {
@@ -8,8 +9,13 @@ const verifyToken = (req, res, next) => {
     return res.status(401).json({ message: 'No token provided' });
   }
 
+  const jwtSecret = getRuntimeValue('JWT_SECRET');
+  if (!jwtSecret) {
+    return res.status(503).json({ message: 'Authentication is not configured.' });
+  }
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, jwtSecret);
     req.user = decoded;
     next();
   } catch (error) {
