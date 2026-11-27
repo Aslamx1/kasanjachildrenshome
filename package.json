@@ -4,6 +4,7 @@
   "description": "Kasanja Children's Home Website - KCH Organization",
   "main": "server.js",
   "scripts": {
+    "postinstall": "node scripts/patch-cloudflare-iconv.cjs",
     "start": "node server.js",
     "dev": "nodemon server.js",
     "serve": "npx serve .",

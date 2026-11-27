@@ -228,6 +228,7 @@ Key steps:
 ### Cloudflare Workers
 
 The Cloudflare deployment runs the Express API on Workers and stores application data in D1. The large story video is omitted from this deployment because it exceeds the Workers static asset limit and R2 storage is not enabled. The D1 database starts empty; the existing MySQL database is not copied automatically.
+Dependency installation applies a small `iconv-lite` package metadata workaround needed by Wrangler's Worker bundler.
 
 1. Install dependencies with `npm install`.
 2. Create the D1 database:
