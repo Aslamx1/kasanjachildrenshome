@@ -4222,7 +4222,7 @@
 
 .auth-brand-logo {
   display: inline-flex;
-  width: min(150px, 100%);
+  width: min(120px, 100%);
   overflow: hidden;
   border-radius: 6px;
   background: #fff;
@@ -4239,7 +4239,7 @@
 
 @media (max-width: 575px) {
   .auth-brand-logo {
-    width: 125px;
+    width: 100px;
   }
 }
 
