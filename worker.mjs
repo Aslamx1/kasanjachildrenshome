@@ -5,8 +5,8 @@ globalThis.__KCH_RUNTIME__ = bindings;
 
 const { createApp } = await import('./server/app.js');
 const app = createApp();
-app.listen(8787);
-const apiHandler = httpServerHandler({ port: 8787 });
+const apiServer = app.listen(8787);
+const apiHandler = httpServerHandler(apiServer);
 
 export default {
   async fetch(request, runtime, ctx) {
