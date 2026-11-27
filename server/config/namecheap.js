@@ -1,54 +1,34 @@
-const https = require('https');
-const querystring = require('querystring');
+const { getRuntimeValue } = require('./runtime-env');
 
 class NamecheapAPI {
-  constructor() {
-    this.apiKey = process.env.NAMECHEAP_API_KEY;
-    this.apiUser = process.env.NAMECHEAP_API_USER;
-    this.apiUrl = process.env.NAMECHEAP_API_URL || 'https://api.namecheap.com/api/v1';
-    this.sandbox = process.env.NAMECHEAP_SANDBOX === 'true';
-    
-    if (!this.apiKey || !this.apiUser) {
-      throw new Error('Namecheap API credentials not configured');
-    }
-  }
-
-  /**
-   * Make HTTP request to Namecheap API
-   */
   async request(command, params = {}) {
-    return new Promise((resolve, reject) => {
-      const queryParams = {
-        ApiUser: this.apiUser,
-        ApiKey: this.apiKey,
-        UserName: this.apiUser,
-        Command: command,
-        ClientIp: '127.0.0.1',
-        ...params
-      };
+    const apiKey = getRuntimeValue('NAMECHEAP_API_KEY');
+    const apiUser = getRuntimeValue('NAMECHEAP_API_USER');
+    if (!apiKey || !apiUser) {
+      throw new Error('Namecheap API credentials are not configured.');
+    }
 
-      const url = `${this.apiUrl}/${command}?${querystring.stringify(queryParams)}`;
-
-      https.get(url, (res) => {
-        let data = '';
-        res.on('data', chunk => data += chunk);
-        res.on('end', () => {
-          try {
-            resolve({
-              status: res.statusCode,
-              data: data
-            });
-          } catch (err) {
-            reject(err);
-          }
-        });
-      }).on('error', reject);
+    const queryParams = new URLSearchParams({
+      ApiUser: apiUser,
+      ApiKey: apiKey,
+      UserName: apiUser,
+      Command: command,
+      ClientIp: getRuntimeValue('NAMECHEAP_CLIENT_IP', '127.0.0.1')
     });
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null) {
+        queryParams.set(key, String(value));
+      }
+    }
+
+    const apiUrl = getRuntimeValue('NAMECHEAP_API_URL', 'https://api.namecheap.com/api/v1');
+    const response = await fetch(`${apiUrl}/${command}?${queryParams.toString()}`);
+    return {
+      status: response.status,
+      data: await response.text()
+    };
   }
 
-  /**
-   * Check domain availability
-   */
   async checkDomainAvailability(domainName) {
     try {
       const response = await this.request('domains.check', { DomainList: domainName });
@@ -66,9 +46,6 @@ class NamecheapAPI {
     }
   }
 
-  /**
-   * Get list of domains
-   */
   async listDomains() {
     try {
       const response = await this.request('domains.getList', { ListType: 'ALL' });
@@ -84,9 +61,6 @@ class NamecheapAPI {
     }
   }
 
-  /**
-   * Get DNS records for domain
-   */
   async getDNSRecords(domain) {
     try {
       const response = await this.request('domains.dns.getHosts', { Domain: domain });
@@ -103,9 +77,6 @@ class NamecheapAPI {
     }
   }
 
-  /**
-   * Set DNS records
-   */
   async setDNSRecords(domain, records) {
     try {
       const params = { Domain: domain };
@@ -132,9 +103,6 @@ class NamecheapAPI {
     }
   }
 
-  /**
-   * Register domain
-   */
   async registerDomain(domainName, years = 1, contactInfo = {}) {
     try {
       const params = {
@@ -165,9 +133,6 @@ class NamecheapAPI {
     }
   }
 
-  /**
-   * Get account info
-   */
   async getAccountInfo() {
     try {
       const response = await this.request('users.getBalances');
@@ -183,9 +148,6 @@ class NamecheapAPI {
     }
   }
 
-  /**
-   * Get SSL certificates list
-   */
   async listSSLCertificates() {
     try {
       const response = await this.request('ssl.getList');
@@ -201,9 +163,6 @@ class NamecheapAPI {
     }
   }
 
-  /**
-   * Get hosting account info
-   */
   async getHostingInfo(username) {
     try {
       const response = await this.request('hosting.getInfo', { Username: username });

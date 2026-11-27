@@ -38,13 +38,13 @@ router.get('/activity', verifyToken, async (req, res) => {
     const [activities] = await conn.query(`
       SELECT 
         'Donation' as type, 
-        CONCAT(COALESCE(donor_name, 'Anonymous'), ' donated UGX ', FORMAT(amount, 0)) as action,
+        COALESCE(donor_name, 'Anonymous') || ' donated UGX ' || printf('%.0f', amount) as action,
         donation_date as timestamp
       FROM donations
       UNION ALL
       SELECT 
         'Child', 
-        CONCAT('Registered ', name),
+        'Registered ' || name,
         created_at
       FROM children
       ORDER BY timestamp DESC
@@ -103,7 +103,7 @@ router.get('/user-registrations/recent', verifyToken, async (req, res) => {
         role,
         created_at
       FROM users
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+      WHERE created_at >= datetime('now', '-7 days')
       ORDER BY created_at DESC
     `);
     

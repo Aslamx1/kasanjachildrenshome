@@ -66,7 +66,7 @@ router.put('/:id', verifyToken, checkRole(['admin']), async (req, res) => {
 
     const conn = await pool.getConnection();
     await conn.query(
-      'UPDATE donations SET donor_name = ?, donor_email = ?, amount = ?, method = ?, status = ?, notes = ?, donation_date = COALESCE(?, donation_date) WHERE id = ?',
+      'UPDATE donations SET donor_name = ?, donor_email = ?, amount = ?, method = ?, status = ?, notes = ?, donation_date = COALESCE(?, donation_date), updated_at = NOW() WHERE id = ?',
       [donor_name, donor_email || null, amount, method, status, notes || '', donation_date || null, req.params.id]
     );
     conn.release();

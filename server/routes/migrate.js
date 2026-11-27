@@ -33,8 +33,9 @@ router.post('/from-localstorage', verifyToken, async (req, res) => {
           const [result] = await conn.query(
             `INSERT INTO users (email, password_hash, name, role, phone, status, created_at) 
              VALUES (?, ?, ?, ?, ?, ?, NOW())
-             ON DUPLICATE KEY UPDATE 
-             name=VALUES(name), role=VALUES(role), status=VALUES(status), phone=VALUES(phone)`,
+             ON CONFLICT(email) DO UPDATE SET
+             name=excluded.name, role=excluded.role, status=excluded.status, phone=excluded.phone,
+             updated_at=CURRENT_TIMESTAMP`,
             [
               user.email,
               passwordHash || 'placeholder_hash',
@@ -56,15 +57,20 @@ router.post('/from-localstorage', verifyToken, async (req, res) => {
     if (children && Array.isArray(children)) {
       for (const child of children) {
         try {
+          const statusByLowercase = {
+            active: 'Active',
+            inactive: 'Inactive',
+            graduated: 'Graduated',
+            sponsored: 'Sponsored'
+          };
+          const normalizedStatus = statusByLowercase[String(child.status || 'active').toLowerCase()] || 'Active';
           const [result] = await conn.query(
             `INSERT INTO children (name, age, status, date_of_birth, created_at) 
-             VALUES (?, ?, ?, ?, NOW())
-             ON DUPLICATE KEY UPDATE 
-             name=VALUES(name), age=VALUES(age), status=VALUES(status)`,
+             VALUES (?, ?, ?, ?, NOW())`,
             [
               child.name || 'Unknown',
               child.age || 0,
-              child.status || 'active',
+              normalizedStatus,
               child.date_of_birth || null
             ]
           );
@@ -88,7 +94,7 @@ router.post('/from-localstorage', verifyToken, async (req, res) => {
               donation.amount || 0,
               donation.currency || 'UGX',
               donation.donation_type || 'one-time',
-              'completed'
+              'Received'
             ]
           );
           
@@ -106,8 +112,9 @@ router.post('/from-localstorage', verifyToken, async (req, res) => {
           const [result] = await conn.query(
             `INSERT INTO users (email, password_hash, name, role, phone, status, created_at) 
              VALUES (?, ?, ?, ?, ?, ?, NOW())
-             ON DUPLICATE KEY UPDATE 
-             name=VALUES(name), phone=VALUES(phone), status=VALUES(status)`,
+             ON CONFLICT(email) DO UPDATE SET
+             name=excluded.name, phone=excluded.phone, status=excluded.status,
+             updated_at=CURRENT_TIMESTAMP`,
             [
               member.email || `staff_${Date.now()}@kch.org`,
               'placeholder_hash',

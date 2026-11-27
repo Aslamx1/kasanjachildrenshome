@@ -7,24 +7,36 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "serve": "npx serve .",
-    "create-admin": "node server/create-admin.js"
+    "create-admin": "node server/create-admin.js",
+    "test": "node --test",
+    "cf:dev": "wrangler dev",
+    "cf:deploy": "wrangler deploy",
+    "cf:d1:local": "wrangler d1 execute kch-production --local --file=cloudflare/schema.sql",
+    "cf:d1:remote": "wrangler d1 execute kch-production --remote --file=cloudflare/schema.sql"
   },
-  "keywords": ["kch", "kasanja", "children", "uganda", "nonprofit"],
+  "keywords": [
+    "kch",
+    "kasanja",
+    "children",
+    "uganda",
+    "nonprofit"
+  ],
   "author": "KCH Team",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
-    "mysql2": "^3.6.0",
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.0",
-    "dotenv": "^16.0.3",
     "cors": "^2.8.5",
-    "helmet": "^7.0.0",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
     "express-validator": "^7.0.0",
-    "morgan": "^1.10.0"
+    "helmet": "^7.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "morgan": "^1.10.0",
+    "mysql2": "^3.6.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1",
-    "serve": "^14.2.0"
+    "serve": "^14.2.0",
+    "wrangler": "^4.168.0"
   }
 }

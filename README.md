@@ -225,6 +225,25 @@ Key steps:
 5. Enable SSL/TLS
 6. Start application
 
+### Cloudflare Workers
+
+The Cloudflare deployment runs the Express API on Workers and stores application data in D1. The large story video is omitted from this deployment because it exceeds the Workers static asset limit and R2 storage is not enabled. The D1 database starts empty; the existing MySQL database is not copied automatically.
+
+1. Install dependencies with `npm install`.
+2. Create the D1 database:
+   ```bash
+   npx wrangler@4.168.0 d1 create kch-production
+   ```
+3. Add the D1 database ID to `wrangler.jsonc`, then apply the schema:
+   ```bash
+   npx wrangler@4.168.0 d1 execute kch-production --remote --file=cloudflare/schema.sql
+   ```
+4. Set the Worker secrets `JWT_SECRET` and `KCH_ADMIN_SETUP_TOKEN` using `npx wrangler@4.168.0 secret put <NAME>`. Use unique, strong random values; never commit them.
+5. Deploy with `npx wrangler@4.168.0 deploy`. The configured route serves `kasanjachildrenhome.org`.
+6. Create the first administrator through `POST /api/auth/bootstrap` with the setup token, then remove that bootstrap secret with `npx wrangler@4.168.0 secret delete KCH_ADMIN_SETUP_TOKEN`.
+
+The Cloudflare migration configuration is separate from the existing Namecheap/MySQL setup. Cloudflare account authorization, resource creation, database initialization, and domain routing must be completed before the Worker is live.
+
 ## 🔒 Security
 
 - ✅ JWT authentication

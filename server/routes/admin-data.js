@@ -242,7 +242,7 @@ router.put('/:resource/:id', async (req, res) => {
   try {
     connection = await pool.getConnection();
     const [result] = await connection.query(
-      `UPDATE \`${resource.table}\` SET ${columns.map(column => `\`${column}\` = ?`).join(', ')} WHERE id = ?`,
+      `UPDATE \`${resource.table}\` SET ${columns.map(column => `\`${column}\` = ?`).join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [...columns.map(column => data[column]), req.params.id]
     );
     if (!result.affectedRows) return res.status(404).json({ message: 'Record not found.' });

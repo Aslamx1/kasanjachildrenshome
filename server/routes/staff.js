@@ -11,7 +11,7 @@ router.get('/', async (req, res) => {
   try {
     const connection = await db.getConnection();
     const [staff] = await connection.query(
-      'SELECT id, email, name, role, phone, status, created_at FROM users WHERE role IN ("staff", "manager", "coordinator") ORDER BY created_at DESC'
+      "SELECT id, email, name, role, phone, status, created_at FROM users WHERE role IN ('staff', 'manager', 'coordinator') ORDER BY created_at DESC"
     );
     connection.release();
     res.json(staff);
@@ -44,7 +44,7 @@ router.post('/', async (req, res) => {
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
     const [result] = await connection.query(
-      'INSERT INTO users (email, password_hash, name, role, phone, status, created_at) VALUES (?, ?, ?, ?, ?, "active", NOW())',
+      "INSERT INTO users (email, password_hash, name, role, phone, status, created_at) VALUES (?, ?, ?, ?, ?, 'active', NOW())",
       [email, hashedPassword, name, role, phone || null]
     );
 
@@ -100,7 +100,7 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ error: 'No fields to update' });
     }
 
-    query += updates.join(', ') + ' WHERE id = ? AND role IN ("staff", "manager", "coordinator")';
+    query += updates.join(', ') + " , updated_at = NOW() WHERE id = ? AND role IN ('staff', 'manager', 'coordinator')";
     params.push(id);
 
     const [result] = await connection.query(query, params);
@@ -125,7 +125,7 @@ router.delete('/:id', async (req, res) => {
     const connection = await db.getConnection();
     
     const [result] = await connection.query(
-      'DELETE FROM users WHERE id = ? AND role IN ("staff", "manager", "coordinator")',
+      "DELETE FROM users WHERE id = ? AND role IN ('staff', 'manager', 'coordinator')",
       [id]
     );
     
@@ -153,7 +153,7 @@ router.post('/:id/reset-password', async (req, res) => {
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
     const [result] = await connection.query(
-      'UPDATE users SET password_hash = ? WHERE id = ? AND role IN ("staff", "manager", "coordinator")',
+      "UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ? AND role IN ('staff', 'manager', 'coordinator')",
       [hashedPassword, id]
     );
 

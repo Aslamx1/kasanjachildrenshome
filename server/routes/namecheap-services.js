@@ -119,18 +119,33 @@ router.put('/services/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
+    const allowedFields = new Set([
+      'service_type',
+      'service_name',
+      'domain_name',
+      'purchase_date',
+      'expiry_date',
+      'renewal_date',
+      'status',
+      'auto_renew',
+      'price',
+      'renewal_price',
+      'notes'
+    ]);
+    const fields = Object.keys(updates).filter(key => allowedFields.has(key));
+
+    if (!fields.length) {
+      return res.status(400).json({ success: false, error: 'No editable fields supplied' });
+    }
 
     const conn = await pool.getConnection();
     
-    const fields = Object.keys(updates)
-      .map(key => `${key} = ?`)
-      .join(', ');
-    
-    const values = Object.values(updates);
+    const assignments = fields.map(key => `${key} = ?`).join(', ');
+    const values = fields.map(key => updates[key]);
     values.push(id);
 
     await conn.query(
-      `UPDATE namecheap_services SET ${fields}, updated_at = NOW() WHERE id = ?`,
+      `UPDATE namecheap_services SET ${assignments}, updated_at = NOW() WHERE id = ?`,
       values
     );
     
@@ -216,11 +231,11 @@ router.get('/renewals/upcoming', verifyToken, async (req, res) => {
         s.domain_name,
         s.expiry_date,
         s.renewal_date,
-        DATEDIFF(s.renewal_date, CURDATE()) as days_until_renewal,
+        CAST(julianday(s.renewal_date) - julianday(date('now')) AS INTEGER) as days_until_renewal,
         CASE 
-          WHEN DATEDIFF(s.renewal_date, CURDATE()) <= 0 THEN 'Overdue'
-          WHEN DATEDIFF(s.renewal_date, CURDATE()) <= 14 THEN 'Critical'
-          WHEN DATEDIFF(s.renewal_date, CURDATE()) <= 30 THEN 'Urgent'
+          WHEN julianday(s.renewal_date) - julianday(date('now')) <= 0 THEN 'Overdue'
+          WHEN julianday(s.renewal_date) - julianday(date('now')) <= 14 THEN 'Critical'
+          WHEN julianday(s.renewal_date) - julianday(date('now')) <= 30 THEN 'Urgent'
           ELSE 'Normal'
         END as priority,
         s.auto_renew,
@@ -228,8 +243,8 @@ router.get('/renewals/upcoming', verifyToken, async (req, res) => {
         s.renewal_price
       FROM namecheap_services s
       WHERE s.renewal_date IS NOT NULL 
-      AND s.renewal_date > CURDATE()
-      AND s.renewal_date <= DATE_ADD(CURDATE(), INTERVAL 90 DAY)
+      AND s.renewal_date > date('now')
+      AND s.renewal_date <= date('now', '+90 days')
       ORDER BY s.renewal_date ASC
     `);
     
