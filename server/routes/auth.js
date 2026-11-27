@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
+const { getRuntimeValue } = require('../config/runtime-env');
 const { verifyToken } = require('../middleware/auth');
 
 // Login
@@ -29,10 +31,15 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    const jwtSecret = getRuntimeValue('JWT_SECRET');
+    if (!jwtSecret) {
+      return res.status(503).json({ message: 'Authentication is not configured.' });
+    }
+
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role, name: user.name },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE }
+      jwtSecret,
+      { expiresIn: getRuntimeValue('JWT_EXPIRE', '7d') }
     );
 
     res.json({
@@ -61,6 +68,11 @@ router.post('/register', verifyToken, async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
+
+    const jwtSecret = getRuntimeValue('JWT_SECRET');
+    if (!jwtSecret) {
+      return res.status(503).json({ message: 'Authentication is not configured.' });
+    }
 
     const conn = await pool.getConnection();
     await conn.query(
@@ -101,6 +113,11 @@ router.post('/signup', async (req, res) => {
     }
     const passwordHash = await bcrypt.hash(password, 10);
 
+    const jwtSecret = getRuntimeValue('JWT_SECRET');
+    if (!jwtSecret) {
+      return res.status(503).json({ message: 'Authentication is not configured.' });
+    }
+
     const conn = await pool.getConnection();
     
     try {
@@ -114,8 +131,8 @@ router.post('/signup', async (req, res) => {
       // Create JWT token for auto-login
       const token = jwt.sign(
         { id: result.insertId, email, role: userRole, name: fullName },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRE }
+        jwtSecret,
+        { expiresIn: getRuntimeValue('JWT_EXPIRE', '7d') }
       );
 
       res.status(201).json({
@@ -133,6 +150,51 @@ router.post('/signup', async (req, res) => {
   } catch (error) {
     console.error('Signup error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+router.post('/bootstrap', async (req, res) => {
+  const setupToken = getRuntimeValue('KCH_ADMIN_SETUP_TOKEN');
+  if (!setupToken) {
+    return res.status(404).json({ message: 'Route not found' });
+  }
+
+  const submittedToken = String(req.body.setupToken || '');
+  const expectedBuffer = Buffer.from(setupToken);
+  const submittedBuffer = Buffer.from(submittedToken);
+  if (expectedBuffer.length !== submittedBuffer.length ||
+      !crypto.timingSafeEqual(expectedBuffer, submittedBuffer)) {
+    return res.status(401).json({ message: 'Invalid setup token' });
+  }
+
+  const { email, name, password } = req.body;
+  if (typeof email !== 'string' || typeof name !== 'string' ||
+      typeof password !== 'string' || !email.trim() || !name.trim() || password.length < 12) {
+    return res.status(400).json({ message: 'Email, name, and a password of at least 12 characters are required.' });
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const [admins] = await conn.query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
+    if (admins.length) {
+      return res.status(409).json({ message: 'An administrator account already exists.' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    await conn.query(
+      'INSERT INTO users (email, password_hash, name, role, status) VALUES (?, ?, ?, ?, ?)',
+      [email.trim(), passwordHash, name.trim(), 'admin', 'active']
+    );
+    return res.status(201).json({ message: 'Administrator account created. You can now sign in.' });
+  } catch (error) {
+    console.error('Admin bootstrap error:', error);
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ message: 'An account already uses this email.' });
+    }
+    return res.status(500).json({ message: 'Could not create the administrator account.' });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
