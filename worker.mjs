@@ -1,3 +1,4 @@
+import { createServer } from 'node:http';
 import { env as bindings } from 'cloudflare:workers';
 import { httpServerHandler } from 'cloudflare:node';
 
@@ -5,7 +6,7 @@ globalThis.__KCH_RUNTIME__ = bindings;
 
 const { createApp } = await import('./server/app.js');
 const app = createApp();
-const apiServer = app.listen(8787);
+const apiServer = createServer(app);
 const apiHandler = httpServerHandler(apiServer);
 
 export default {
